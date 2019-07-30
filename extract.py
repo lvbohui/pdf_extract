@@ -16,13 +16,13 @@ import time
 import os
 
 
-class ExtractTxt:
+class ExtractText:
     def __init__(self):
         pass
 
     def cut_pages(self, cut_filename, start_page=1, end_page=None):
         '''
-        :param filename: 要处理的pdf文件名，格式为："filename.pdf"
+        :param cut_filename: 要处理的pdf文件名，格式为："filename.pdf"
         :param start_page: 截取的开始页：不大于pdf总页数的整数
         :param end_page: 截取的截止页：不大于pdf总页数，不小于start_page的整数
         :return: 返回截取后的pdf文件名，格式为："output_filename.pdf"
@@ -30,8 +30,8 @@ class ExtractTxt:
         if end_page is None:
             reader = PdfFileReader(cut_filename)
             end_page = reader.getNumPages()
-
-        fp = PdfFileReader(open(filename,'rb'))
+        print("开始截取页面，截取页数为%d页到%d页..." % (start_page, end_page))
+        fp = PdfFileReader(open(filename, 'rb'))
         output = PdfFileWriter()
         for i in range(start_page-1, end_page):
             output.addPage(fp.getPage(i))
@@ -48,7 +48,7 @@ class ExtractTxt:
         :return: 以txt格式文件返回抽取出的文本内容，方便下一步处理,格式为："filename_extracted.txt"
         '''
 
-        cut_file_name = ExtractTxt.cut_pages(self, fn, start_page, end_page)  # 要截取的页数，起始页到结束页
+        cut_file_name = ExtractText.cut_pages(self, fn, start_page, end_page)  # 要截取的页数，起始页到结束页
         print("截取完成，正在抽取文本...")
         # 抽取截取过的pdf文件的文本内容
         fn = open(cut_file_name, 'rb')
@@ -77,8 +77,8 @@ class ExtractTxt:
                 for out in layout:
                     if hasattr(out, "get_text"):
                         with open(out_extract_name, 'a', encoding="utf-8") as f:
-                            # 写入方式为连续写入，因此对同一文件重复操作时需要删除上一次产生的文件
-                            f.write(out.get_text())
+                            '''写入方式为连续写入，因此对同一文件重复操作时需要删除上一次产生的文件'''
+                            f.write(out.get_text() + "\n")
         fn.close()
         print("抽取完成！")
         os.remove(cut_file_name)  # 删除中间文件
@@ -88,7 +88,6 @@ class ExtractTxt:
     def txt_clearn(self, filename):  # 对抽取出的文本进行基本的清洗
         '''
         :param filename: 要清洗的文件名
-        :param out_file_name: 清洗完成后输出的文件名
         :return: 根据需要可以返回清洗后的：字符串、列表、文本文件
         '''
         fn = open(filename, "r", encoding="utf-8")
@@ -99,16 +98,17 @@ class ExtractTxt:
         for c in string.punctuation:
             contest = contest.replace(c, " ")
 
-        wordList = nltk.word_tokenize(contest)
+        wordlist = nltk.word_tokenize(contest)  # 分词工具
 
-        filtered = [w for w in wordList if w not in stopwords.words("english")]  # 去除停顿符
+        filtered = [w for w in wordlist if w not in stopwords.words("english", "chinese")]  # 去除停顿符
 
         ps = PorterStemmer()
         filtered = [ps.stem(w) for w in filtered]
 
         wl = WordNetLemmatizer()
         filtered = [wl.lemmatize(w) for w in filtered]
-        out_cleaned_name = "".join(filename.split(".")[:-1]) + '_' + 'cleaned.txt'
+
+        out_cleaned_name = "".join(filename.split(".")[:-1]) + '_' + 'cleaned.txt'  # 清洗完成后输出的文件名
 
         writer = open(out_cleaned_name, 'w', encoding="utf-8")
         writer.write(" ".join(filtered))
@@ -121,13 +121,13 @@ class ExtractTxt:
 
 
 if __name__ == '__main__':
-    filename = "3637.pdf"   # 要抽取的文件名
+    filename = "pdf_reference_17.pdf"   # 要抽取的文件名
     time1 = time.time()
 
-    extract = ExtractTxt()
+    extract = ExtractText()
 
-    extracted_file_name = extract.parse(filename)   # 返回产生的txt文件名，便于下一步处理
-    cleaned_file_name = extract.txt_clearn(extracted_file_name)  # 对抽取出的文件进行清洗
+    extracted_file_name = extract.parse(filename, 469, 476)   # 返回产生的txt文件名，便于下一步处理
+    # cleaned_file_name = extract.txt_clearn(extracted_file_name)  # 对抽取出的文件进行清洗
 
     time2 = time.time()
     print("总时间:%fs" % (time2 - time1))
