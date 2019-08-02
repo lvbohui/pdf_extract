@@ -7,13 +7,13 @@ from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter, PDFTextEx
 from pdfminer.layout import LAParams
 from pdfminer.converter import PDFPageAggregator
 from PyPDF2 import PdfFileReader, PdfFileWriter
-from nltk.corpus import stopwords
-from nltk.stem.porter import PorterStemmer
-from nltk.stem import WordNetLemmatizer
 import nltk
-import string
 import time
 import os
+import re
+import logging
+logging.Logger.propagate = False
+logging.getLogger().setLevel(logging.ERROR)
 
 
 class ExtractText:
@@ -30,8 +30,9 @@ class ExtractText:
         if end_page is None:
             reader = PdfFileReader(cut_filename)
             end_page = reader.getNumPages()
-        print("开始截取页面，截取页数为%d页到%d页..." % (start_page, end_page))
+        print("Start to cut pages, cut pages from %d to %d..." % (start_page, end_page))
         fp = PdfFileReader(open(filename, 'rb'))
+        pdf_title = fp.getDocumentInfo().title
         output = PdfFileWriter()
         for i in range(start_page-1, end_page):
             output.addPage(fp.getPage(i))
@@ -49,7 +50,8 @@ class ExtractText:
         '''
 
         cut_file_name = ExtractText.cut_pages(self, fn, start_page, end_page)  # 要截取的页数，起始页到结束页
-        print("截取完成，正在抽取文本...")
+        print("Cut pages done.")
+        print("Start to extract text...")
         # 抽取截取过的pdf文件的文本内容
         fn = open(cut_file_name, 'rb')
         parser = PDFParser(fn)  # 创建pdf文档分析器
@@ -80,54 +82,54 @@ class ExtractText:
                             '''写入方式为连续写入，因此对同一文件重复操作时需要删除上一次产生的文件'''
                             f.write(out.get_text() + "\n")
         fn.close()
-        print("抽取完成！")
+        print("Extract text done")
         os.remove(cut_file_name)  # 删除中间文件
-
         return out_extract_name
 
-    def txt_clearn(self, filename):  # 对抽取出的文本进行基本的清洗
-        '''
-        :param filename: 要清洗的文件名
-        :return: 根据需要可以返回清洗后的：字符串、列表、文本文件
-        '''
-        fn = open(filename, "r", encoding="utf-8")
+    def txt_clean(self,file_name):
+        # 读取并分词
+        with open(file_name, "r", encoding="utf-8") as text:
+            words_list = nltk.word_tokenize("".join(text.readlines()))  # 英文分词工具
+        print("Start organizing data...")
+        punctuation_list = [',', '.', ':', ';', '?', '(', ')', '[', ']', ' .',
+                            '&', '!', '*', '@', '#', '$', '%', '-', '®', '\"', '•', '§',
+                            'A', 'B', 'C', 'D', 'E', 'F', 'G',
+                            'H', 'I', 'J', 'K', 'L', 'M', 'N',
+                            'O', 'P', 'Q', 'R', 'S', 'T',
+                            'U', 'V', 'W', 'X', 'Y', 'Z']  # 要去除的单个字符，标点符号
+        # 去停词和标点符号
+        filter_words = [word for word in words_list
+                        if word not in list(set(nltk.corpus.stopwords.words("english")))
+                        and word not in punctuation_list]
+        print("Remove stop words done")
+        # 词形还原
+        wordnet_le = nltk.stem.WordNetLemmatizer()
+        lemmatize_words = [wordnet_le.lemmatize(word) for word in filter_words]
+        print("Words Lemmatizer done")
 
-        print("开始整理数据...")
-        contest = fn.read().lower()  # 设置为小写
-        # 去除标点符号
-        for c in string.punctuation:
-            contest = contest.replace(c, " ")
+        # 整理为字符串
+        cleaned_string = (" ".join(lemmatize_words)).lower()
 
-        wordlist = nltk.word_tokenize(contest)  # 分词工具
+        # 用正则表达式去除特殊字符
+        pattern = ["\\d", "\\.", "§"]
+        for i in range(len(pattern)):
+            cleaned_string = re.sub(pattern[i], "", cleaned_string)
 
-        filtered = [w for w in wordlist if w not in stopwords.words("english", "chinese")]  # 去除停顿符
-
-        ps = PorterStemmer()
-        filtered = [ps.stem(w) for w in filtered]
-
-        wl = WordNetLemmatizer()
-        filtered = [wl.lemmatize(w) for w in filtered]
-
-        out_cleaned_name = "".join(filename.split(".")[:-1]) + '_' + 'cleaned.txt'  # 清洗完成后输出的文件名
-
-        writer = open(out_cleaned_name, 'w', encoding="utf-8")
-        writer.write(" ".join(filtered))
-        fn.close()
-        writer.close()
-        print("整理完成！")
-        # return filtered   # 返回列表
-        # return " ".join(filtered) # 返回字符串
-        return out_cleaned_name    # 返回文件名
+        out_cleaned_name = "".join(file_name.split(".")[:-1]) + '_' + 'cleaned.txt'  # 处理产生的文件名
+        with open(out_cleaned_name, "w", encoding="utf-8") as writer:
+            writer.write(cleaned_string)
+        print("Organizing data done")
+        return out_cleaned_name
 
 
 if __name__ == '__main__':
-    filename = "pdf_reference_17.pdf"   # 要抽取的文件名
+    filename = "singular-value-decomposition-fast-track-tutorial.doc.pdf"   # 要抽取的文件名
     time1 = time.time()
 
     extract = ExtractText()
 
-    extracted_file_name = extract.parse(filename, 469, 476)   # 返回产生的txt文件名，便于下一步处理
-    # cleaned_file_name = extract.txt_clearn(extracted_file_name)  # 对抽取出的文件进行清洗
+    extracted_file_name = extract.parse(filename)   # 返回产生的txt文件名，便于下一步处理
+    cleaned_file_name = extract.txt_clean(extracted_file_name)  # 对抽取出的文件进行整理
 
     time2 = time.time()
-    print("总时间:%fs" % (time2 - time1))
+    print("Total time :%fs" % (time2 - time1))
