@@ -17,31 +17,33 @@ logging.getLogger().setLevel(logging.ERROR)
 
 
 class ExtractText:
-    def __init__(self):
+    def __init__(self, file_name, start_page=1, end_page=None):
+        self.File_name = file_name
+        self.Start_page = start_page
+        if end_page is None:
+            reader = PdfFileReader(file_name)
+            self.End_page = reader.getNumPages()
+        else:
+            self.End_page = end_page
         pass
 
-    def cut_pages(self, cut_filename, start_page=1, end_page=None):
-        '''
-        :param cut_filename: 要处理的pdf文件名，格式为："filename.pdf"
-        :param start_page: 截取的开始页：不大于pdf总页数的整数
-        :param end_page: 截取的截止页：不大于pdf总页数，不小于start_page的整数
-        :return: 返回截取后的pdf文件名，格式为："output_filename.pdf"
-        '''
-        if end_page is None:
-            reader = PdfFileReader(cut_filename)
-            end_page = reader.getNumPages()
-        print("Start to cut pages, cut pages from %d to %d..." % (start_page, end_page))
+    def cut_pages(self):
+
+        # :return: 返回截取后的pdf文件名，格式为："output_filename.pdf"
+        if self.End_page is None:
+            reader = PdfFileReader(self.File_name)
+            self.End_page = reader.getNumPages()
+        print("Start to cut pages, cut pages from %d to %d..." % (self.Start_page, self.End_page))
         fp = PdfFileReader(open(filename, 'rb'))
-        pdf_title = fp.getDocumentInfo().title
         output = PdfFileWriter()
-        for i in range(start_page-1, end_page):
+        for i in range(self.Start_page-1, self.End_page):
             output.addPage(fp.getPage(i))
         output_filename = "output.pdf"
         output_stream = open(output_filename, "wb")
         output.write(output_stream)
         return output_filename
 
-    def parse(self, fn, start_page=1, end_page=None):
+    def parse(self):
         '''
         :param fn: 要处理的pdf文件名，格式为："filename.pdf"
         :param start_page: 截取的开始页：不大于pdf总页数的整数
@@ -49,7 +51,7 @@ class ExtractText:
         :return: 以txt格式文件返回抽取出的文本内容，方便下一步处理,格式为："filename_extracted.txt"
         '''
 
-        cut_file_name = ExtractText.cut_pages(self, fn, start_page, end_page)  # 要截取的页数，起始页到结束页
+        cut_file_name = ExtractText.cut_pages(self)  # 要截取的页数，起始页到结束页
         print("Cut pages done.")
         print("Start to extract text...")
         # 抽取截取过的pdf文件的文本内容
@@ -86,7 +88,8 @@ class ExtractText:
         os.remove(cut_file_name)  # 删除中间文件
         return out_extract_name
 
-    def txt_clean(self,file_name):
+
+    def txt_clean(self, file_name):
         # 读取并分词
         with open(file_name, "r", encoding="utf-8") as text:
             words_list = nltk.word_tokenize("".join(text.readlines()))  # 英文分词工具
@@ -123,12 +126,12 @@ class ExtractText:
 
 
 if __name__ == '__main__':
-    filename = "singular-value-decomposition-fast-track-tutorial.doc.pdf"   # 要抽取的文件名
+    filename = "pdf_reference_17.pdf"   # 要抽取的文件名
     time1 = time.time()
 
-    extract = ExtractText()
+    extract = ExtractText(filename)
 
-    extracted_file_name = extract.parse(filename)   # 返回产生的txt文件名，便于下一步处理
+    extracted_file_name = extract.parse()   # 返回产生的txt文件名，便于下一步处理
     cleaned_file_name = extract.txt_clean(extracted_file_name)  # 对抽取出的文件进行整理
 
     time2 = time.time()
