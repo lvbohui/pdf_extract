@@ -36,12 +36,13 @@ def decrtpt_pdf(path, filename, password, decrypted_filename = None):
     pdf_writer.appendPagesFromReader(pdf_reader)
     if decrypted_filename is None:
         decrypted_filename = "" .join(filename.split(".")[:-1]) + '_' + 'decrypted.pdf'
-    pdf_writer.write(open(r"C:\Users\Admin\PycharmProjects\pdf_ex\decrypte_pdf_file"+decrypted_filename ,'wb'))
+        print(decrypted_filename)
+    pdf_writer.write(open(decrypted_filename ,'wb'))
 
 if __name__ == "__main__":
     time_start = time.time()
-    read_path = r"C:\Users\Admin\PycharmProjects\pdf_ex\encrypte_pdf_file"
-    fn = r"\acrobat-xi-accessibility-checker.pdf"
-    decrtpt_pdf(read_path,fn,'')
+    read_path = r"H:\Project\local_project\grpc-learn\pdf_file"
+    fn = r"\Acme Corporation Inc NDA template.pdf"
+    decrtpt_pdf(read_path, fn,'')
     time_end = time.time()
     print("总共消耗时间：", (time_end - time_start))
